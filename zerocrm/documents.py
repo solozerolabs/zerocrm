@@ -13,11 +13,14 @@ from sqlalchemy.engine import Engine
 from .contracts import _event
 from .memory import add_chunks, chunk_text
 from .schema import contract, document
+from .storage import from_env as _storage_from_env
 
 
 def attach_document(engine: Engine, *, contract_id=None, location_id=None, filename,
-                    uri=None, doc_type=None, text=None, actor,
+                    uri=None, doc_type=None, text=None, data=None, actor,
                     workspace_id: str = "default") -> str:
+    """Record a document. Pass `text` to also chunk it for retrieval; pass `data`
+    (bytes) to upload the blob to configured S3/R2 storage and use that as the uri."""
     if not (contract_id or location_id):
         raise ValueError("a document must attach to a contract or a location")
     chunks = chunk_text(text) if (text and text.strip()) else []
@@ -32,6 +35,15 @@ def attach_document(engine: Engine, *, contract_id=None, location_id=None, filen
                        workspace_id=workspace_id, conn=conn)
         if contract_id:
             _event(conn, contract_id, "doc_attached", {"filename": filename}, actor, workspace_id)
+    # blob upload is network I/O -> outside the txn; the doc row already exists
+    if data is not None:
+        store = _storage_from_env()
+        if store is None:
+            raise RuntimeError("data given but blob storage is not configured (ZEROCRM_S3_*)")
+        blob_uri = store.put(f"documents/{did}/{filename}", data,
+                             content_type=doc_type or "application/octet-stream")
+        with engine.begin() as conn:
+            conn.execute(document.update().where(document.c.id == did).values(uri=blob_uri))
     return did
 
 

@@ -27,9 +27,9 @@ confirmation docs, and periodic quality inspections tracked back to the location
 
 Out of scope (named so they are not built here): vendor price book / price-change
 → invoice deltas → **Slice 3 (CPQ)**; marketing → Slice 4; autonomous calling →
-mode A. Blob-store *upload wiring* (how a file reaches object storage) is a
-deferred live-verify task, same staging as Slice 1's Google/Slack driver classes
-— the schema, audit, generation, and retrieval hookup are what this slice builds.
+mode A. (Blob-store upload wiring is now BUILT: `zerocrm/storage.py` is an S3/R2
+SigV4 client over httpx, wired into `attach_document(data=...)` and live-verified
+against Cloudflare R2 via `zerocrm verify-storage`.)
 
 ## Architecture — data + audit, no new runtime
 

@@ -171,11 +171,29 @@ def _cmd_attach_doc(args: argparse.Namespace) -> int:
     if args.file:
         with open(args.file) as f:
             text = f.read()
+    data = None
+    if args.upload:
+        with open(args.upload, "rb") as f:
+            data = f.read()
     did = attach_document(make_engine(args.dsn), contract_id=args.contract,
                           location_id=args.location, filename=args.filename,
-                          uri=args.uri, text=text, actor=_CLI_ACTOR)
+                          uri=args.uri, text=text, data=data, actor=_CLI_ACTOR)
     print(did)
     return 0
+
+
+def _cmd_verify_storage(args: argparse.Namespace) -> int:
+    from .storage import from_env
+    store = from_env()
+    if store is None:
+        print("blob storage NOT configured (set ZEROCRM_S3_ENDPOINT/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY)")
+        return 1
+    key = "zerocrm-selftest/verify.txt"
+    store.put(key, b"ok", content_type="text/plain")
+    ok = store.get(key) == b"ok"
+    store.delete(key)
+    print("storage OK: put/get/delete round-trip verified" if ok else "storage FAILED round-trip")
+    return 0 if ok else 1
 
 
 def _cmd_record_inspection(args: argparse.Namespace) -> int:
@@ -288,7 +306,10 @@ def main(argv: list[str] | None = None) -> int:
     adc.add_argument("--location", default=None)
     adc.add_argument("--uri", default=None)
     adc.add_argument("--file", default=None, help="local text file to also chunk for retrieval")
+    adc.add_argument("--upload", default=None, help="local file to upload to blob storage (sets uri)")
     adc.set_defaults(func=_cmd_attach_doc)
+
+    sub.add_parser("verify-storage", help="probe blob storage (put/get/delete round-trip)").set_defaults(func=_cmd_verify_storage)
 
     ri = sub.add_parser("record-inspection", help="record a quality inspection")
     ri.add_argument("--location", required=True)
