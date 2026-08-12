@@ -225,6 +225,16 @@ def _cmd_quote_line(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_nurture(args: argparse.Namespace) -> int:
+    from .marketing import build_customer_list, create_nurture_campaign, enrol_list
+    engine = make_engine(args.dsn)
+    lid = build_customer_list(engine, name=f"{args.name}-audience", actor=_CLI_ACTOR)
+    cid = create_nurture_campaign(engine, name=args.name, channel=args.channel, actor=_CLI_ACTOR)
+    n = enrol_list(engine, lid, cid, actor=_CLI_ACTOR)
+    print(f"nurture '{args.name}': {n} customer(s) enrolled (scheduled)")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="zerocrm")
     p.add_argument("--dsn", default=None, help="DB DSN (default: env or sqlite:///zerocrm.db)")
@@ -317,6 +327,11 @@ def main(argv: list[str] | None = None) -> int:
     ql.add_argument("--qty", type=float, default=1)
     ql.add_argument("--cost", type=float, default=None)
     ql.set_defaults(func=_cmd_quote_line)
+
+    nu = sub.add_parser("nurture", help="enrol the customer base into a nurture campaign")
+    nu.add_argument("--name", required=True)
+    nu.add_argument("--channel", default="email")
+    nu.set_defaults(func=_cmd_nurture)
 
     sc = sub.add_parser("set-config", help="set a config key (value is JSON)")
     sc.add_argument("key")
