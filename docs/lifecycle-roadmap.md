@@ -102,10 +102,10 @@ yet); NO invoice entity (zerocrm surfaces price deltas via a digest notice, it i
 not the invoicing system); `contract_line` gains a soft `supply_id` reference for
 price-impact detection.
 
-## Slice 4 — Marketing (roadmap fidelity)
+## Slice 4 — Marketing
 
-Reuses the existing `campaign` / `flow_state` / `list` / `audience_sync` spine —
-the outbound machinery is already multi-channel. "Grow into marketing" is turning
-on `flow_kind = nurture` campaigns and audience syncs, not new architecture.
-Deliberately last: it compounds on a full customer base, which the earlier slices
-create.
+**PROMOTED to a full spec:** `slice-4-marketing-spec.md`. Thinnest slice — one
+module (`marketing.py`) over the existing `campaign`/`list`/`flow_state` spine, no
+new tables, no new runtime. Builds a customer audience (active-contract companies +
+won deals) and enrols it into a `nurture` campaign as `scheduled` (the digest +
+`sending_enabled` gate still own every send).
