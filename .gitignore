@@ -1,0 +1,22 @@
+# data is NEVER committed — the repo is the engine, your data stays local
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# secrets
+.env
+.env.*
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# deployment/infra — private (DB cron scheduling, Fly config, ops runbook)
+deploy/
+docs/runtime-architecture.md
