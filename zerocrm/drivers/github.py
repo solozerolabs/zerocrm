@@ -36,7 +36,27 @@ def _blog_matches(blog: str, domain: str) -> bool:
 
 
 def github_probe(name: str, domain: str) -> dict:
-    """Return {found, login, public_repos, top_languages, last_push, confidence}."""
+    """Probe GitHub for the org account behind a company, to gauge whether it ships code.
+
+    Guesses the org login from `domain`'s root and, if that yields no verified
+    match, falls back to searching GitHub orgs by `name`. A candidate is only
+    accepted if its profile blog links back to `domain` (high confidence) or its
+    login exactly matches the domain root and it has at least one public repo
+    (medium confidence) — this avoids false positives from unrelated accounts
+    that merely share a name. Fails soft: any `gh` CLI error is treated as no
+    match rather than raised.
+
+    Args:
+        name: Company name, used as a fallback org search query.
+        domain: Company website domain, used to guess the org login and to
+            verify a candidate's profile blog/website.
+
+    Returns:
+        On no confident match: {"found": False}.
+        On a match: {"found": True, "login": str, "public_repos": int,
+        "top_languages": list[str], "last_push": str | None,
+        "confidence": "high" | "medium"}.
+    """
     root = _domain_root(domain)
     candidates: list[str] = []
     if root:
