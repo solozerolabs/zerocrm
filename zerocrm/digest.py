@@ -266,6 +266,8 @@ def _card_html(card: dict, base_url: str) -> str:
     skip = action_url(base_url, it["item_no"], "skip")
     btn = ('padding:9px 18px;border-radius:6px;text-decoration:none;font-weight:600;'
            'display:inline-block;font-size:14px')
+    tech_html = f'<div style="font-size:13px;color:#555">{tech}</div>' if tech else ""
+    gh_html = f'<div style="font-size:12px;color:#777">{gh_line}</div>' if gh_line else ""
     return (
         f'<div style="border:1px solid #e2e2e2;border-radius:8px;padding:16px;margin:12px 0">'
         f'<div style="font-size:12px;color:#888">#{it["item_no"]} · {e(it.get("kind",""))} · {e(it.get("channel",""))}</div>'
@@ -274,8 +276,8 @@ def _card_html(card: dict, base_url: str) -> str:
         f'<div style="font-size:14px;color:#333">{comp}'
         f'{" (" + dom + ")" if dom else ""}</div>'
         f'<div style="font-size:13px;color:#555;margin:4px 0">{facts}</div>'
-        f'{f"<div style=\"font-size:13px;color:#555\">{tech}</div>" if tech else ""}'
-        f'{f"<div style=\"font-size:12px;color:#777\">{gh_line}</div>" if gh_line else ""}'
+        f'{tech_html}'
+        f'{gh_html}'
         f'{why_html}'
         f'<div style="background:#fafafa;border-radius:6px;padding:10px;margin:8px 0;font-size:13px">{copy_html}</div>'
         f'<div style="margin-top:12px">'
