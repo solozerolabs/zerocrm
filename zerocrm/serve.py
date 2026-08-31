@@ -23,12 +23,15 @@ _VERBS = {"/digest": run_digest, "/tick": run_tick}
 
 
 class _Handler(BaseHTTPRequestHandler):
+    def _token_ok(self) -> bool:
+        token = os.environ.get("ZEROCRM_TRIGGER_TOKEN", "")
+        given = self.headers.get("X-Zerocrm-Token", "")
+        return bool(token) and hmac.compare_digest(token, given)
+
     def do_POST(self) -> None:  # noqa: N802
         if self.path.startswith("/webhook/"):
             return self._webhook()
-        token = os.environ.get("ZEROCRM_TRIGGER_TOKEN", "")
-        given = self.headers.get("X-Zerocrm-Token", "")
-        if not token or not hmac.compare_digest(token, given):
+        if not self._token_ok():
             return self._reply(401, {"error": "unauthorized"})
         verb = _VERBS.get(self.path)
         if not verb:
@@ -67,6 +70,10 @@ class _Handler(BaseHTTPRequestHandler):
             return self._reply(200, {"ok": True})
         if self.path.startswith("/act"):
             return self._act()
+        if self.path == "/contacts":
+            if not self._token_ok():
+                return self._reply(401, {"error": "unauthorized"})
+            return self._contacts()
         return self._reply(404, {})
 
     def _webhook(self) -> None:
@@ -119,6 +126,16 @@ class _Handler(BaseHTTPRequestHandler):
             verb = "approved ✓" if action == "ok" else "skipped"
             return self._reply_html(200, f"#{item} {verb}. You can close this tab.")
         return self._reply_html(200, f"#{item} was already handled.")
+
+    def _contacts(self) -> None:
+        from .contacts import list_contacts, render_contacts_page
+
+        page = render_contacts_page(list_contacts(make_engine())).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(page)))
+        self.end_headers()
+        self.wfile.write(page)
 
     def _reply_html(self, code: int, message: str) -> None:
         page = (f'<!doctype html><meta name="viewport" content="width=device-width">'
