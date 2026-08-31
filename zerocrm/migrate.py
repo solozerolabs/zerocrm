@@ -54,6 +54,15 @@ def _cpq(engine: Engine) -> None:
             conn.execute(text("ALTER TABLE contract_line ADD COLUMN supply_id VARCHAR(32)"))
 
 
+def _staff_api_token(engine: Engine) -> None:
+    # additive COLUMN on an existing table (staff was created at 004_postsale);
+    # same guarded-ALTER pattern as _cpq's supply_id.
+    cols = {c["name"] for c in inspect(engine).get_columns("staff")}
+    if "api_token" not in cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE staff ADD COLUMN api_token TEXT"))
+
+
 # version -> callable(engine). Ordered by key.
 MIGRATIONS: dict[str, callable] = {
     "001_core": _create_all,
@@ -61,6 +70,7 @@ MIGRATIONS: dict[str, callable] = {
     "003_conversation": _conversation,
     "004_postsale": _postsale,
     "005_cpq": _cpq,
+    "006_staff_api_token": _staff_api_token,
 }
 
 

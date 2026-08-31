@@ -67,6 +67,8 @@ class _Handler(BaseHTTPRequestHandler):
             return self._reply(200, {"ok": True})
         if self.path.startswith("/act"):
             return self._act()
+        if self.path.startswith("/contacts/export"):
+            return self._export_contacts()
         return self._reply(404, {})
 
     def _webhook(self) -> None:
@@ -119,6 +121,21 @@ class _Handler(BaseHTTPRequestHandler):
             verb = "approved ✓" if action == "ok" else "skipped"
             return self._reply_html(200, f"#{item} {verb}. You can close this tab.")
         return self._reply_html(200, f"#{item} was already handled.")
+
+    def _export_contacts(self) -> None:
+        """GET /contacts/export?staff_id=<id> — bearer token must match that
+        staff (user)'s stored api_token (zerocrm/authz.py). 401 on missing or
+        mismatched token; otherwise the full contact list."""
+        from .authz import verify_api_token
+        from .contacts import export_contacts
+
+        staff_id = (parse_qs(urlparse(self.path).query).get("staff_id") or [""])[0]
+        auth = self.headers.get("Authorization", "")
+        token = auth[len("Bearer "):] if auth.startswith("Bearer ") else ""
+        engine = make_engine()
+        if not verify_api_token(engine, staff_id, token):
+            return self._reply(401, {"error": "unauthorized"})
+        return self._reply(200, {"contacts": export_contacts(engine)})
 
     def _reply_html(self, code: int, message: str) -> None:
         page = (f'<!doctype html><meta name="viewport" content="width=device-width">'
