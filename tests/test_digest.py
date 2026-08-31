@@ -2,7 +2,7 @@
 
 from sqlalchemy import select
 
-from zerocrm.digest import apply_decisions, authenticate_reply, parse_reply, render
+from zerocrm.digest import _card_html, apply_decisions, authenticate_reply, parse_reply, render
 from zerocrm.schema import correction, digest_item
 
 ACTOR = {"kind": "human", "id": "sid"}
@@ -126,3 +126,31 @@ def test_render_uses_stable_item_numbers(engine, mk_item):
         ).mappings().one()
     body = render([dict(item)])
     assert f"#{n}" in body and "Jane @ Acme" in body
+
+
+def test_card_html_includes_tech_and_github_signal_fragments():
+    card = {
+        "item": {"item_no": 7, "kind": "enroll", "channel": "email", "payload": {}},
+        "person": {"full_name": "Jamie Lead", "job_title": "CTO"},
+        "company": {
+            "name": "Acme", "domain": "acme.com",
+            "enrichment": {
+                "technologies": ["Anthropic", "Vercel"],
+                "github": {"found": True, "public_repos": 12,
+                           "top_languages": ["Python"], "confidence": "high"},
+            },
+        },
+    }
+    html = _card_html(card, base_url="https://example.com")
+    assert "Anthropic, Vercel" in html
+    assert "GitHub: 12 repos" in html and "Python" in html
+
+
+def test_card_html_omits_signal_fragments_when_absent():
+    card = {
+        "item": {"item_no": 8, "kind": "enroll", "channel": "email", "payload": {}},
+        "person": {"full_name": "No Signal"},
+        "company": {"name": "Acme", "enrichment": {}},
+    }
+    html = _card_html(card, base_url="https://example.com")
+    assert "GitHub:" not in html

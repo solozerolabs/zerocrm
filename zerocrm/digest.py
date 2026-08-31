@@ -254,6 +254,8 @@ def _card_html(card: dict, base_url: str) -> str:
     why = _why(payload)
     why_html = (f'<p style="margin:8px 0;padding:6px 10px;background:#eef6ff;border-radius:4px">'
                 f'<b>why:</b> {e(why)}</p>') if why else ""
+    tech_html = f'<div style="font-size:13px;color:#555">{tech}</div>' if tech else ""
+    gh_html = f'<div style="font-size:12px;color:#777">{gh_line}</div>' if gh_line else ""
 
     # touch 1, merges filled (the rest of the 4-touch sequence is campaign-level)
     prev = payload.get("preview") or {}
@@ -274,8 +276,8 @@ def _card_html(card: dict, base_url: str) -> str:
         f'<div style="font-size:14px;color:#333">{comp}'
         f'{" (" + dom + ")" if dom else ""}</div>'
         f'<div style="font-size:13px;color:#555;margin:4px 0">{facts}</div>'
-        f'{f"<div style=\"font-size:13px;color:#555\">{tech}</div>" if tech else ""}'
-        f'{f"<div style=\"font-size:12px;color:#777\">{gh_line}</div>" if gh_line else ""}'
+        f'{tech_html}'
+        f'{gh_html}'
         f'{why_html}'
         f'<div style="background:#fafafa;border-radius:6px;padding:10px;margin:8px 0;font-size:13px">{copy_html}</div>'
         f'<div style="margin-top:12px">'

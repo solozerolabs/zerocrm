@@ -207,6 +207,8 @@ staff = Table(
     Column("email", Text),
     Column("role", Text),
     Column("active", Boolean, nullable=False, default=True),
+    # opaque per-user API token for read-only export endpoints; see zerocrm/authz.py
+    Column("api_token", Text),
     *_common(),
 )
 
