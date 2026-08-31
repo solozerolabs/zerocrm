@@ -1,10 +1,12 @@
 """Tiny token-gated HTTP trigger so an external scheduler can wake a
 scale-to-zero worker and run one verb. stdlib only — no web framework.
 
-    POST /digest   -> run_digest
-    POST /tick     -> run_tick
+    POST /digest    -> run_digest
+    POST /tick      -> run_tick
+    GET  /contacts  -> contacts list page (CSV export button, client-side)
 
-Auth: header `X-Zerocrm-Token` must equal env ZEROCRM_TRIGGER_TOKEN (constant-time).
+Auth: header `X-Zerocrm-Token` (or, for a plain browser GET, `?token=`) must
+equal env ZEROCRM_TRIGGER_TOKEN (constant-time).
 The machine auto-starts on the request and scales back to zero when idle (Fly).
 """
 
@@ -67,7 +69,33 @@ class _Handler(BaseHTTPRequestHandler):
             return self._reply(200, {"ok": True})
         if self.path.startswith("/act"):
             return self._act()
+        if self.path.startswith("/contacts"):
+            return self._contacts()
         return self._reply(404, {})
+
+    def _authorized(self) -> bool:
+        """Same bearer as the POST verbs (header), plus a query-string fallback
+        since a plain browser GET can't set a custom header."""
+        token = os.environ.get("ZEROCRM_TRIGGER_TOKEN", "")
+        if not token:
+            return False
+        given = self.headers.get("X-Zerocrm-Token", "")
+        if given and hmac.compare_digest(token, given):
+            return True
+        q_token = (parse_qs(urlparse(self.path).query).get("token") or [""])[0]
+        return bool(q_token) and hmac.compare_digest(token, q_token)
+
+    def _contacts(self) -> None:
+        from .contacts import list_contacts, render_contacts_page
+
+        if not self._authorized():
+            return self._reply(401, {"error": "unauthorized"})
+        page = render_contacts_page(list_contacts(make_engine()))
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(page)))
+        self.end_headers()
+        self.wfile.write(page)
 
     def _webhook(self) -> None:
         """Provider webhook receiver (POST /webhook/<provider>?token=...). Smartlead

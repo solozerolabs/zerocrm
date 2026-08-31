@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "description": "Test runner for the client-side contacts CSV serializer (zerocrm/static/csv.js). No dependencies: uses Node's built-in test runner.",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}
