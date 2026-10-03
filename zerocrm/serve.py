@@ -153,7 +153,10 @@ class _Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
     port = int(os.environ.get("PORT", "8080"))
-    ThreadingHTTPServer(("0.0.0.0", port), _Handler).serve_forever()
+    try:
+        ThreadingHTTPServer(("0.0.0.0", port), _Handler).serve_forever()
+    except KeyboardInterrupt:  # Fly autostop SIGINTs an idle machine: a normal stop, not a crash
+        pass
 
 
 if __name__ == "__main__":
