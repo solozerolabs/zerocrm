@@ -14,6 +14,7 @@ import hmac
 import json
 import os
 import re
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -41,11 +42,14 @@ class _Handler(BaseHTTPRequestHandler):
         verb = _VERBS.get(self.path)
         if not verb:
             return self._reply(404, {"error": "unknown verb"})
+        started = time.monotonic()
         try:
             result = verb(make_engine())
             self._reply(200, {"ok": True, "result": result})
+            self._log(200, started)
         except Exception as exc:  # noqa: BLE001 — return 500 so pg_cron logs the failure
             self._reply(500, {"ok": False, "error": _safe_error(exc)})
+            self._log(500, started, _safe_error(exc))
 
     def do_HEAD(self) -> None:  # noqa: N802
         # email link-scanners sometimes HEAD the booking URL; mirror the redirect
@@ -98,12 +102,15 @@ class _Handler(BaseHTTPRequestHandler):
               f"event_type={payload.get('event_type')}", flush=True)
         from .runner import load_runtime_config
         from .webhooks import ingest_provider_webhook
+        started = time.monotonic()
         try:
             engine = make_engine()
             res = ingest_provider_webhook(engine, provider, payload, load_runtime_config(engine))
             self._reply(200, {"ok": True, "result": res})
+            self._log(200, started)
         except Exception as exc:  # noqa: BLE001 — 500 so the provider (and our poll) knows it failed
             self._reply(500, {"ok": False, "error": _safe_error(exc)})
+            self._log(500, started, _safe_error(exc))
 
     def _act(self) -> None:
         """One-tap approve/skip from a digest button. The HMAC sig in the query
@@ -146,6 +153,14 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
+
+    def _log(self, code: int, started: float, error: str = "") -> None:
+        # One line per verb/webhook so a failing tick reaches the log sink: pg_net keeps the
+        # response 6h and nobody reads it there (a 500 every hour went unseen, 2026-10-02).
+        # Path only, never the query: webhook and one-tap URLs carry their auth there.
+        path = urlparse(self.path).path
+        took = time.monotonic() - started
+        print(f"{self.command} {path} -> {code} in {took:.1f}s" + (f": {error}" if error else ""), flush=True)
 
     def log_message(self, *args) -> None:  # keep stdout clean; Fly captures it anyway
         pass
