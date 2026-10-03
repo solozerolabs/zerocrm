@@ -184,14 +184,24 @@ class Smartlead:
         normalize_event. Lower bound only: live 2026-10-02 Smartlead 400s
         `"event_time_lt" is not allowed`, which failed every tick. Rate limit is
         60 req/60s."""
-        r = self._client.get(
-            f"{BASE}/campaigns/{campaign_id}/leads-statistics",
-            params=self._params(event_time_gt=since_iso),
-        )
-        r.raise_for_status()
-        rows = r.json().get("data", r.json()) if isinstance(r.json(), dict) else r.json()
+        rows: list[dict] = []
+        offset = 0
+        while True:  # pages of 100; reading only the first silently dropped replies past it
+            r = self._client.get(
+                f"{BASE}/campaigns/{campaign_id}/leads-statistics",
+                params=self._params(event_time_gt=since_iso, limit=100, offset=offset),
+            )
+            r.raise_for_status()
+            body = r.json()
+            if not isinstance(body, dict):
+                rows += body or []
+                break
+            rows += body.get("data") or []
+            if not body.get("hasMore"):
+                break
+            offset += 100
         out: list[dict] = []
-        for row in rows or []:
+        for row in rows:
             email = (row.get("lead_email") or row.get("to_email") or "").lower()
             for field, etype in (("replied_at", "EMAIL_REPLY"), ("bounced_at", "EMAIL_BOUNCE")):
                 if row.get(field):

@@ -129,6 +129,20 @@ def test_smartlead_poll_events_normalizes():
     assert kinds == ["bounce", "reply"]
 
 
+
+def test_smartlead_poll_events_reads_every_page():
+    offsets = []
+
+    def handler(req):
+        off = int(req.url.params.get("offset", "0"))
+        offsets.append(off)
+        row = ({"lead_email": "a@x.com", "replied_at": "2026-08-08T10:00:00Z"} if off == 0
+               else {"lead_email": "b@x.com", "bounced_at": "2026-08-08T11:00:00Z"})
+        return httpx.Response(200, json={"hasMore": off == 0, "data": [row], "skip": off, "limit": 100})
+    s = Smartlead(api_key="k", client=_client(handler))
+    assert sorted(e["kind"] for e in s.poll_events(77, "2026-08-01")) == ["bounce", "reply"]
+    assert offsets == [0, 100]
+
 # --- ingest integration ----------------------------------------------------
 def test_import_apollo_people_through_precedence(engine):
     people = [
