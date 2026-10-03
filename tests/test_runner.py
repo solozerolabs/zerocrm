@@ -21,6 +21,8 @@ def _smartlead(reply_rows=None, already_campaigns=None):
             return httpx.Response(200, json={"campaign_ids": already_campaigns or []})
         if "/leads" in p:          # enroll
             return httpx.Response(200, json={"upload_count": 1})
+        if p.endswith("/email-accounts/"):  # warmup gate, live once the date floor passed
+            return httpx.Response(200, json=[])
         return httpx.Response(404)
     return Smartlead(api_key="k", client=httpx.Client(transport=httpx.MockTransport(handler)))
 

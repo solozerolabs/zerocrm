@@ -115,13 +115,16 @@ def test_smartlead_normalize_event_reply_bounce_only():
 def test_smartlead_poll_events_normalizes():
     def handler(req):
         assert "leads-statistics" in req.url.path
+        # Live 2026-10-02: Smartlead 400s `"event_time_lt" is not allowed` — lower bound only.
+        assert req.url.params["event_time_gt"] == "2026-08-01"
+        assert "event_time_lt" not in req.url.params
         return httpx.Response(200, json={"data": [
             {"lead_email": "a@x.com", "replied_at": "2026-08-08T10:00:00Z", "message_id": "m9"},
             {"lead_email": "b@x.com", "bounced_at": "2026-08-08T11:00:00Z"},
             {"lead_email": "c@x.com"},  # no reply/bounce -> ignored
         ]})
     s = Smartlead(api_key="k", client=_client(handler))
-    events = s.poll_events(77, "2026-08-01", "2026-08-09")
+    events = s.poll_events(77, "2026-08-01")
     kinds = sorted(e["kind"] for e in events)
     assert kinds == ["bounce", "reply"]
 

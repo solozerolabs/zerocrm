@@ -179,14 +179,14 @@ class Smartlead:
         r.raise_for_status()
         return r.json()
 
-    def poll_events(self, campaign_id: int, since_iso: str, until_iso: str) -> list[dict]:
+    def poll_events(self, campaign_id: int, since_iso: str) -> list[dict]:
         """Poll replies/bounces for a campaign since a cursor, normalized like
-        normalize_event. LIVE-UNVERIFIED: endpoint shape is from docs + peer
-        repos; confirm against a real campaign before relying on it (no live
-        campaigns exist until post-warmup). Rate limit is 60 req/60s."""
+        normalize_event. Lower bound only: live 2026-10-02 Smartlead 400s
+        `"event_time_lt" is not allowed`, which failed every tick. Rate limit is
+        60 req/60s."""
         r = self._client.get(
             f"{BASE}/campaigns/{campaign_id}/leads-statistics",
-            params=self._params(event_time_gt=since_iso, event_time_lt=until_iso),
+            params=self._params(event_time_gt=since_iso),
         )
         r.raise_for_status()
         rows = r.json().get("data", r.json()) if isinstance(r.json(), dict) else r.json()

@@ -193,7 +193,7 @@ def poll_smartlead(engine: Engine, config: dict, smartlead: Sender | None = None
     ingested = duplicate = 0
     for cid in campaigns:
         since = get_config(engine, f"poll_cursor:{cid}", (now - timedelta(days=7)).isoformat())
-        for ev in smartlead.poll_events(cid, since, now.isoformat()):
+        for ev in smartlead.poll_events(cid, since):
             outcome = record_provider_event(engine, ev, _POLLER)
             if outcome == "inserted":
                 ingested += 1

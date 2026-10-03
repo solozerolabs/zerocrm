@@ -120,7 +120,7 @@ def _cmd_verify_live(args: argparse.Namespace) -> int:
     print(f"smartlead accounts: {[a.get('from_email') for a in accts]}")
     for cid in cfg.get("smartlead_poll_campaigns", []):
         try:
-            evs = sl.poll_events(cid, "2026-01-01", "2026-12-31")
+            evs = sl.poll_events(cid, "2026-01-01")
             print(f"poll campaign {cid}: {len(evs)} events, shape OK")
         except Exception as exc:  # noqa: BLE001
             print(f"poll campaign {cid}: FAILED -> {exc}")
