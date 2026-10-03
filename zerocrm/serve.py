@@ -13,6 +13,7 @@ from __future__ import annotations
 import hmac
 import json
 import os
+import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -20,6 +21,13 @@ from .db import make_engine
 from .runner import run_digest, run_tick
 
 _VERBS = {"/digest": run_digest, "/tick": run_tick}
+# httpx errors quote the full URL and Smartlead/ZeroBounce take api_key in the query, so a
+# raw str(exc) put the live key in every failing 500 body (which pg_net stores).
+_SECRET_QS = re.compile(r"((?:api_)?key|token)=[^&\s'\"]+", re.IGNORECASE)
+
+
+def _safe_error(exc: Exception) -> str:
+    return _SECRET_QS.sub(r"\1=<redacted>", str(exc))
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -37,7 +45,7 @@ class _Handler(BaseHTTPRequestHandler):
             result = verb(make_engine())
             self._reply(200, {"ok": True, "result": result})
         except Exception as exc:  # noqa: BLE001 — return 500 so pg_cron logs the failure
-            self._reply(500, {"ok": False, "error": str(exc)})
+            self._reply(500, {"ok": False, "error": _safe_error(exc)})
 
     def do_HEAD(self) -> None:  # noqa: N802
         # email link-scanners sometimes HEAD the booking URL; mirror the redirect
@@ -95,7 +103,7 @@ class _Handler(BaseHTTPRequestHandler):
             res = ingest_provider_webhook(engine, provider, payload, load_runtime_config(engine))
             self._reply(200, {"ok": True, "result": res})
         except Exception as exc:  # noqa: BLE001 — 500 so the provider (and our poll) knows it failed
-            self._reply(500, {"ok": False, "error": str(exc)})
+            self._reply(500, {"ok": False, "error": _safe_error(exc)})
 
     def _act(self) -> None:
         """One-tap approve/skip from a digest button. The HMAC sig in the query
